@@ -90,7 +90,7 @@ cmpsec:
 	BEQ mainloop
 	CMP R4, #0
 	BEQ err
-
+	B ret
 
 err:
 	LDR R0, =wrongitem
