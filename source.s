@@ -1,5 +1,6 @@
 .data
 .balign 4
+invarr:
 gum:
 	.word 2
 peanuts:
@@ -42,11 +43,14 @@ wrongitem:
 	.asciz "You inputted a key for an invalid item. Returning to selection...\n"
 inventory:
 	.asciz "Current Inventory:\nGum: %d\nPeanuts: %d\nCheese Crackers: %d\nM&Ms: %d\n"
+empty:
+	.asciz "We're sorry, we are out of %s!\n"
 
 .text
 .global main
 .global printf
 .global scanf
+.global abs
 
 .equ gumcost, 50
 .equ peanutcost, 55
@@ -61,6 +65,16 @@ main:
 	LDR R0, =costs
 	BL printf
 mainloop:
+	LDR R0, =invarr
+	LDR R1, [R0]
+	CMP R1, #0
+	LDREQ R1, [R0, #4]
+	CMPEQ R1, #0
+	LDREQ R1, [R0, #8]
+	CMPEQ R1, #0
+	LDREQ R1, [R0, #12]
+	CMPEQ R1, #0
+	BEQ ret
 	LDR R0, =select
 	BL printf
 	SUB SP, #4
@@ -78,22 +92,101 @@ cmpsec:
 	MOV R4, #0
 	CMP R0, #'G'
 	MOVEQ R4, #gumcost
+	LDREQ R5, =gumstr
+	MOVEQ R6, #0
 	CMP R0, #'P'
 	MOVEQ R4, #peanutcost
+	LDREQ R5, =peanutstr
+	MOVEQ R6, #4
 	CMP R0, #'C'
 	MOVEQ R4, #crackercost
+	LDREQ R5, =crackerstr
+	MOVEQ R6, #8
 	CMP R0, #'M'
 	MOVEQ R4, #mandmcost
+	LDREQ R5, =mandmstr
+	MOVEQ R6, #12
 	CMP R0, #'i'
 	BLEQ dispinv
-	ADD SP, #4
 	BEQ mainloop
 	CMP R4, #0
 	BEQ err
-	B ret
+	LDR R1, =invarr
+	LDR R0, [R1, R6]
+	CMP R0, #0
+	BEQ emptyselec
+
+verifyinp:
+	LDR R0, =selectdone
+	MOV R1, R5
+	BL printf
+	MOV R1, FP
+	SUB R1, #4
+	LDR R0, =perc
+	BL scanf
+	MOV R0, FP
+	SUB R0, #4
+	MOV R1, #0
+	LDRB R1, [R0]
+	MOV R0, R1
+	CMP R0, #'Y'
+	BNE mainloop
+
+countcoins:
+	LDR R0, =moneyprompt
+	MOV R1, R4
+	BL printf
+	LDR R0, =moneyinp
+	BL printf
+countcoinsloop:
+	LDR R0, =perc
+	MOV R1, FP
+	SUB R1, #4
+	BL scanf
+	MOV R0, FP
+	SUB R0, #4
+	MOV R1, #0
+	LDRB R1, [R0]
+	MOV R0, R1
+	CMP R0, #'D'
+	SUBEQ R4, #10
+	CMP R0, #'Q'
+	SUBEQ R4, #25
+	CMP R0, #'B'
+	SUBEQ R4, #100
+	CMP R4, #0
+	BLE moneydonesec
+	MOV R1, R4
+	LDR R0, =moneyprog
+	BL printf
+	B countcoinsloop
+
+moneydonesec:
+	LDR R0, =moneydone
+	BL printf
+	MOV R0, R4
+	BL abs
+	MOV R4, R0
+	LDR R0, =disp
+	MOV R1, R5
+	BL printf
+	LDR R0, =change
+	MOV R1, R4
+	BL printf
+	LDR R1, =invarr
+	LDR R0, [R1, R6]
+	SUB R0, #1
+	STR R0, [R1, R6]
+	B mainloop
 
 err:
 	LDR R0, =wrongitem
+	BL printf
+	B mainloop
+
+emptyselec:
+	LDR R0, =empty
+	MOV R1, R5
 	BL printf
 	B mainloop
 
